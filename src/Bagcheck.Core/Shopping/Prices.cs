@@ -27,16 +27,12 @@ public sealed record NpcOffer(string Npc, string Zone, uint Price);
 /// <param name="Market">The cheapest way to buy <see cref="Wanted"/> across the data centre.</param>
 /// <param name="Here">The same on the world you were on, or null if nothing is listed there.</param>
 /// <param name="Median">Median price of recent sales, before tax.</param>
-/// <param name="AtTarget">Units listed at or under the target price, and the world with the cheapest of them.</param>
 public sealed record PriceCheck(
     ItemKey Key,
     long Wanted,
-    uint Target,
     Fill Market,
     Fill? Here,
     int? Median,
-    long AtTarget,
-    int? AtTargetWorld,
     NpcOffer? Npc,
     DateTimeOffset? UploadedAt)
 {
@@ -46,9 +42,6 @@ public sealed record PriceCheck(
     public bool CanFinish => NpcIsCheaper || Market.Units >= Wanted;
 
     public ulong CostToFinish => NpcIsCheaper ? Npc!.Price * (ulong)Wanted : Market.Cost;
-
-    /// <summary>The cheapest listing's own price, before tax, which is what a target is compared with.</summary>
-    public int? CheapestListing => Market.Stacks.Count > 0 ? Market.Stacks[0].UnitPrice : null;
 }
 
 public sealed record ShoppingTotal(ulong Cost, int Priced, int CantFinish, int FromNpc);
@@ -97,23 +90,16 @@ public static class Prices
 
     /// <param name="currentWorld">The world you're on, for the "here" price.</param>
     /// <param name="npc">An NPC selling the item; ignored for HQ-only items, as NPCs sell NQ.</param>
-    public static PriceCheck Check(ItemKey key, long wanted, uint target, MarketSnapshot market, int currentWorld, NpcOffer? npc)
+    public static PriceCheck Check(ItemKey key, long wanted, MarketSnapshot market, int currentWorld, NpcOffer? npc)
     {
         var listings = market.Data.Listings ?? [];
         var here = Cheapest(listings, wanted, key.HqOnly, currentWorld);
-        var atTarget = target == 0 ? [] : listings
-            .Where(l => Counts(l, key.HqOnly) && l.PricePerUnit <= target)
-            .OrderBy(l => l.PricePerUnit)
-            .ToList();
         return new(
             key,
             wanted,
-            target,
             Cheapest(listings, wanted, key.HqOnly),
             here.Units > 0 ? here : null,
             Median(market.Data.RecentHistory ?? [], key.HqOnly),
-            atTarget.Sum(l => (long)l.Quantity),
-            atTarget.FirstOrDefault()?.WorldID,
             key.HqOnly ? null : npc,
             market.UploadedAt);
     }

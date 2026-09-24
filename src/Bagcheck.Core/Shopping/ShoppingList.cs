@@ -10,10 +10,6 @@ public sealed class ShoppingItem
     public string Name { get; set; } = "";
     public bool HqOnly { get; set; }
     public int Needed { get; set; } = 1;
-
-    /// <summary>The most you'd like to pay per unit, before tax. 0 means no target.</summary>
-    public uint TargetPrice { get; set; }
-
     public Guid? GroupId { get; set; }
 
     // A method rather than a property, so it isn't written into the saved configuration.
@@ -84,11 +80,8 @@ public sealed class ShoppingList
     }
 }
 
-/// <summary>
-/// What the list needs of one item and quality, added up across every active entry, against what you hold. The
-/// target is the lowest target any of those entries sets.
-/// </summary>
-public sealed record Need(ItemKey Key, string Name, long Needed, long Held, uint TargetPrice, int Entries)
+/// <summary>What the list needs of one item and quality, added up across every active entry, against what you hold.</summary>
+public sealed record Need(ItemKey Key, string Name, long Needed, long Held, int Entries)
 {
     public long Short => Math.Max(0, Needed - Held);
     public bool Done => Short == 0;
@@ -104,6 +97,5 @@ public static class ShoppingNeeds
                 g.First().Name,
                 g.Sum(i => (long)i.Needed),
                 held(g.Key),
-                g.Select(i => i.TargetPrice).Where(p => p > 0).DefaultIfEmpty(0u).Min(),
                 g.Count()));
 }

@@ -55,17 +55,14 @@ public class PriceTests
     }
 
     [Fact]
-    public void CheckReportsHereTargetAndMedian()
+    public void CheckReportsHereAndMedian()
     {
         var market = Market([L(120, 10, Here), L(80, 5, Jenova), L(90, 10, Siren)], [new(95, 1, false, 1)]);
-        var check = Prices.Check(new ItemKey(1, false), 12, 90, market, Here, null);
+        var check = Prices.Check(new ItemKey(1, false), 12, market, Here, null);
 
         Assert.Equal(15, check.Market.Units);
         Assert.Equal(10, check.Here!.Units);
         Assert.Equal(95, check.Median);
-        Assert.Equal(15, check.AtTarget);
-        Assert.Equal(Jenova, check.AtTargetWorld);
-        Assert.Equal(80, check.CheapestListing);
         Assert.True(check.CanFinish);
     }
 
@@ -73,10 +70,10 @@ public class PriceTests
     public void AnNpcWinsWhenCheaperOrWhenTheMarketRunsShort()
     {
         var npc = new NpcOffer("Vral", "The Crystarium", 100);
-        var cheapMarket = Prices.Check(new ItemKey(1, false), 10, 0, Market([L(50, 10, Jenova)]), Here, npc);
-        var dearMarket = Prices.Check(new ItemKey(1, false), 10, 0, Market([L(150, 10, Jenova)]), Here, npc);
-        var shortMarket = Prices.Check(new ItemKey(1, false), 10, 0, Market([L(50, 2, Jenova)]), Here, npc);
-        var hqOnly = Prices.Check(new ItemKey(1, true), 10, 0, Market([L(150, 10, Jenova, hq: true)]), Here, npc);
+        var cheapMarket = Prices.Check(new ItemKey(1, false), 10, Market([L(50, 10, Jenova)]), Here, npc);
+        var dearMarket = Prices.Check(new ItemKey(1, false), 10, Market([L(150, 10, Jenova)]), Here, npc);
+        var shortMarket = Prices.Check(new ItemKey(1, false), 10, Market([L(50, 2, Jenova)]), Here, npc);
+        var hqOnly = Prices.Check(new ItemKey(1, true), 10, Market([L(150, 10, Jenova, hq: true)]), Here, npc);
 
         Assert.False(cheapMarket.NpcIsCheaper);
         Assert.True(dearMarket.NpcIsCheaper);
@@ -91,9 +88,9 @@ public class PriceTests
         var npc = new NpcOffer("Vral", "The Crystarium", 100);
         PriceCheck[] checks =
         [
-            Prices.Check(new ItemKey(1, false), 10, 0, Market([L(150, 10, Jenova)]), Here, npc),  // NPC: 1,000
-            Prices.Check(new ItemKey(2, false), 10, 0, Market([L(10, 10, Jenova)]), Here, null),  // market: 105
-            Prices.Check(new ItemKey(3, false), 10, 0, Market([L(10, 4, Jenova)]), Here, null),   // short: 42
+            Prices.Check(new ItemKey(1, false), 10, Market([L(150, 10, Jenova)]), Here, npc),  // NPC: 1,000
+            Prices.Check(new ItemKey(2, false), 10, Market([L(10, 10, Jenova)]), Here, null),  // market: 105
+            Prices.Check(new ItemKey(3, false), 10, Market([L(10, 4, Jenova)]), Here, null),   // short: 42
         ];
 
         var total = Prices.Total(checks);

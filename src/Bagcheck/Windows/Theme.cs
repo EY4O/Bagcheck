@@ -2,7 +2,9 @@ using System;
 using System.Linq;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Colors;
+using Dalamud.Interface.Components;
 using Dalamud.Interface.Utility;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
@@ -117,6 +119,13 @@ internal static class Theme
     {
         using var colors = Filled(Accent, OnAccent, On);
         return ImGui.Button(label, size);
+    }
+
+    /// <summary>Filled with the accent even with the theme off, for the one button that should always stand out.</summary>
+    public static bool AccentIconButton(FontAwesomeIcon icon, string text)
+    {
+        using var colors = Filled(Accent, OnAccent, true);
+        return ImGuiComponents.IconButtonWithText(icon, text);
     }
 
     /// <summary>For removing things: red with the theme, red text without.</summary>

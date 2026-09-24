@@ -59,8 +59,9 @@ public sealed class ShoppingListTab(Plugin plugin)
 
         var item = list.Items.FirstOrDefault(i => i.Id == selectedItem);
         var group = item == null ? list.Groups.FirstOrDefault(g => g.Id == selectedGroup) : null;
-        var editorHeight = item != null ? ImGui.GetFrameHeightWithSpacing() * 4 + ImGui.GetStyle().ItemSpacing.Y * 2
-            : group != null ? ImGui.GetFrameHeightWithSpacing() * 3 + ImGui.GetStyle().ItemSpacing.Y * 2
+        // Both editors are two lines: a heading with buttons, then the fields.
+        var editorHeight = item != null || group != null
+            ? ImGui.GetFrameHeightWithSpacing() * 2 + ImGui.GetStyle().ItemSpacing.Y * 2 + 6 * ImGuiHelpers.GlobalScale
             : 0;
         using (var child = ImRaii.Child("##list", new Vector2(0, -editorHeight - 4 * ImGuiHelpers.GlobalScale)))
         {
@@ -214,7 +215,7 @@ public sealed class ShoppingListTab(Plugin plugin)
             return;
         }
 
-        using var table = ImRaii.Table("##shopping", 8,
+        using var table = ImRaii.Table("##shopping", 7,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingFixedFit);
         if (!table.Success) return;
         var scale = ImGuiHelpers.GlobalScale;
@@ -224,7 +225,6 @@ public sealed class ShoppingListTab(Plugin plugin)
         ImGui.TableSetupColumn("Need", ImGuiTableColumnFlags.WidthFixed, 60 * scale);
         ImGui.TableSetupColumn("Have", ImGuiTableColumnFlags.WidthFixed, 110 * scale);
         ImGui.TableSetupColumn("Still need", ImGuiTableColumnFlags.WidthFixed, 80 * scale);
-        ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, 70 * scale);
         ImGui.TableSetupColumn("Price", ImGuiTableColumnFlags.WidthFixed, 80 * scale);
         ImGui.TableSetupColumn("Where", ImGuiTableColumnFlags.WidthFixed, 120 * scale);
         ImGui.TableHeadersRow();
@@ -321,10 +321,6 @@ public sealed class ShoppingListTab(Plugin plugin)
             if (need is { Entries: > 1 })
                 Ui.Tip($"This item is on your list {need.Entries} times; together they need {need.Needed:N0}.");
 
-            ImGui.TableNextColumn();
-            if (item.TargetPrice > 0) ImGui.TextUnformatted(item.TargetPrice.ToString("N0"));
-            else ImGui.TextDisabled("-");
-
             DrawPrice(need is { Done: false } ? plugin.Prices.For(key) : null);
         }
     }
@@ -360,12 +356,7 @@ public sealed class ShoppingListTab(Plugin plugin)
             return;
         }
 
-        var unit = decimal.Round(check.Market.UnitCost);
-        var colour = check.Target == 0 ? (Vector4?)null
-            : check.CheapestListing <= check.Target ? Theme.Good
-            : Theme.Warning;
-        if (colour is { } c) ImGui.TextColored(c, unit.ToString("N0"));
-        else ImGui.TextUnformatted(unit.ToString("N0"));
+        ImGui.TextUnformatted(decimal.Round(check.Market.UnitCost).ToString("N0"));
         Ui.Tip(details);
 
         ImGui.TableNextColumn();
@@ -394,10 +385,6 @@ public sealed class ShoppingListTab(Plugin plugin)
             ? $"On {Worlds.CurrentName}: {here.Units:N0} for about {here.Cost:N0} gil"
             : $"Nothing listed on {Worlds.CurrentName}.");
         if (check.Median is { } median) lines.Add($"Recent sales: {median:N0} gil (median, before tax)");
-        if (check.Target > 0)
-            lines.Add(check.AtTarget > 0
-                ? $"Target {check.Target:N0}: {check.AtTarget:N0} listed at or under it, cheapest on {Worlds.Name(check.AtTargetWorld ?? 0)}"
-                : $"Target {check.Target:N0}: nothing listed at or under it");
         if (check.Npc is { } npc)
             lines.Add($"{npc.Npc} ({npc.Zone}) sells it for {npc.Price:N0} gil each" + (check.NpcIsCheaper ? ", the better buy" : ""));
         if (check.UploadedAt is { } uploaded) lines.Add($"Universalis data from {Ui.Ago(uploaded)}.");
@@ -448,45 +435,51 @@ public sealed class ShoppingListTab(Plugin plugin)
             if (ImGui.SmallButton("Keep")) confirmRemove = false;
         }
 
-        var width = 120 * ImGuiHelpers.GlobalScale;
+        // One line: Needed: [amount]  Group [dropdown]  (HQ only, for items that can be HQ).
+        var scale = ImGuiHelpers.GlobalScale;
+        ImGui.AlignTextToFramePadding();
+        ImGui.TextUnformatted("Needed:");
+        ImGui.SameLine();
         var needed = item.Needed;
-        ImGui.SetNextItemWidth(width);
-        if (ImGui.InputInt("Need", ref needed))
+        ImGui.SetNextItemWidth(110 * scale);
+        if (ImGui.InputInt("##needed", ref needed))
         {
             item.Needed = Math.Clamp(needed, 1, ShoppingList.MaxNeeded);
             plugin.MarkDirty();
         }
+
+        ImGui.SameLine(0, 16 * scale);
+        ImGui.TextUnformatted("Group");
         ImGui.SameLine();
-        var target = (int)Math.Min(item.TargetPrice, int.MaxValue);
-        ImGui.SetNextItemWidth(width);
-        if (ImGui.InputInt("Target price", ref target))
+        ImGui.SetNextItemWidth(200 * scale);
+        using (var combo = ImRaii.Combo("##group", GroupName(list, item.GroupId)))
         {
-            item.TargetPrice = (uint)Math.Max(0, target);
-            plugin.MarkDirty();
-        }
-        Ui.Tip("The most you'd like to pay per unit, before tax. Price checks point out listings at or under it. 0 means none.");
-        if (info is { CanBeHq: true })
-        {
-            ImGui.SameLine();
-            var hqOnly = item.HqOnly;
-            if (ImGui.Checkbox("HQ only", ref hqOnly))
+            if (combo.Success)
             {
-                item.HqOnly = hqOnly;
-                plugin.MarkDirty();
+                if (ImGui.Selectable("No group", item.GroupId == null))
+                {
+                    item.GroupId = null;
+                    plugin.MarkDirty();
+                }
+                foreach (var g in list.Groups.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase))
+                {
+                    using var gid = ImRaii.PushId(g.Id.ToString());
+                    if (!ImGui.Selectable(g.Name, item.GroupId == g.Id)) continue;
+                    item.GroupId = g.Id;
+                    plugin.MarkDirty();
+                }
             }
-            Ui.Tip("Off: HQ and NQ both count, and prices include both.");
         }
 
-        if (list.Groups.Count == 0) return;
-        ImGui.SetNextItemWidth(width * 2);
-        using var combo = ImRaii.Combo("Group", GroupName(list, item.GroupId));
-        if (!combo.Success) return;
-        if (ImGui.Selectable("No group", item.GroupId == null)) { item.GroupId = null; plugin.MarkDirty(); }
-        foreach (var g in list.Groups.OrderBy(g => g.Name, StringComparer.OrdinalIgnoreCase))
+        if (info is not { CanBeHq: true }) return;
+        ImGui.SameLine(0, 16 * scale);
+        var hqOnly = item.HqOnly;
+        if (ImGui.Checkbox("HQ only", ref hqOnly))
         {
-            using var gid = ImRaii.PushId(g.Id.ToString());
-            if (ImGui.Selectable(g.Name, item.GroupId == g.Id)) { item.GroupId = g.Id; plugin.MarkDirty(); }
+            item.HqOnly = hqOnly;
+            plugin.MarkDirty();
         }
+        Ui.Tip("Off: HQ and NQ both count, and prices include both.");
     }
 
     private void DrawGroupEditor(ShoppingList list, ShoppingGroup group)
@@ -540,7 +533,7 @@ public sealed class ShoppingListTab(Plugin plugin)
         {
             ImGui.SameLine();
             if (ImGui.Button("Update from Teamcraft")) plugin.OpenImport(group.Id);
-            Ui.Tip("Paste the list again to update the amounts. Target prices you've set are kept.");
+            Ui.Tip("Paste the list again to update the amounts.");
         }
     }
 

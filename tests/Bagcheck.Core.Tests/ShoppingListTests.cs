@@ -35,15 +35,14 @@ public class ShoppingListTests
         var tinctures = new ShoppingGroup { Name = "Tinctures" };
         var paused = new ShoppingGroup { Name = "Later", Active = false };
         list.Groups.AddRange([tinctures, paused]);
-        list.Add(5057, "Iron Ore", false, 10, null, out _).TargetPrice = 20;
-        list.Add(5057, "Iron Ore", false, 15, tinctures.Id, out _).TargetPrice = 15;
+        list.Add(5057, "Iron Ore", false, 10, null, out _);
+        list.Add(5057, "Iron Ore", false, 15, tinctures.Id, out _);
         list.Add(5057, "Iron Ore", false, 100, paused.Id, out _);
 
         var need = ShoppingNeeds.Of(list, _ => 7)[new ItemKey(5057, false)];
 
         Assert.Equal(25, need.Needed);
         Assert.Equal(18, need.Short);
-        Assert.Equal(15u, need.TargetPrice);
         Assert.Equal(2, need.Entries);
         Assert.False(need.Done);
     }

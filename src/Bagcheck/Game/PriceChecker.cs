@@ -14,7 +14,7 @@ namespace Bagcheck.Game;
 /// </summary>
 public sealed class PriceChecker(Plugin plugin) : IDisposable
 {
-    private sealed record Job(ItemKey Key, string Name, long Wanted, uint Target, NpcOffer? Npc);
+    private sealed record Job(ItemKey Key, string Name, long Wanted, NpcOffer? Npc);
 
     private readonly ConcurrentDictionary<ItemKey, PriceCheck> results = new();
     private readonly ConcurrentQueue<string> failures = new();
@@ -41,7 +41,7 @@ public sealed class PriceChecker(Plugin plugin) : IDisposable
         if (scope.Length == 0) return;
 
         var jobs = needs.Where(n => !n.Done)
-            .Select(n => new Job(n.Key, n.Name, n.Short, n.TargetPrice, Npc(n.Key.ItemId)))
+            .Select(n => new Job(n.Key, n.Name, n.Short, Npc(n.Key.ItemId)))
             .ToList();
         results.Clear();
         failures.Clear();
@@ -63,7 +63,7 @@ public sealed class PriceChecker(Plugin plugin) : IDisposable
                 {
                     var market = await plugin.Market.Client
                         .GetAsync(job.Key.ItemId, job.Key.HqOnly ? true : null, scope, 20, token).ConfigureAwait(false);
-                    results[job.Key] = Prices.Check(job.Key, job.Wanted, job.Target, market, world, job.Npc);
+                    results[job.Key] = Prices.Check(job.Key, job.Wanted, market, world, job.Npc);
                 }
                 catch (Exception ex) when (!token.IsCancellationRequested)
                 {

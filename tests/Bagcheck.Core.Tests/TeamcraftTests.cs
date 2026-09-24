@@ -73,12 +73,12 @@ public class TeamcraftTests
     }
 
     [Fact]
-    public void UpdatingAGroupKeepsTargetsAndOnlyRemovesWhenAsked()
+    public void UpdatingAGroupChangesAmountsAndOnlyRemovesWhenAsked()
     {
         var list = new ShoppingList();
         var group = new ShoppingGroup { Name = "Ingots", Source = ShoppingGroup.Teamcraft };
         list.Groups.Add(group);
-        list.Add(5111, "Iron Ore", false, 3, group.Id, out _).TargetPrice = 25;
+        var original = list.Add(5111, "Iron Ore", false, 3, group.Id, out _);
         list.Add(5057, "Iron Ingot", false, 2, group.Id, out _);
 
         var rows = TeamcraftImport.Resolve(TeamcraftText.Parse("6x Iron Ore"), Find);
@@ -90,8 +90,8 @@ public class TeamcraftTests
         Assert.Equal(2, list.Items.Count);
 
         var ore = list.Items.Single(i => i.ItemId == 5111);
+        Assert.Same(original, ore);                          // the same entry, updated in place
         Assert.Equal(6, ore.Needed);
-        Assert.Equal(25u, ore.TargetPrice);
 
         var removed = TeamcraftImport.Apply(list, group.Id, "", TeamcraftImport.Plan(list, group.Id, rows), true, DateTimeOffset.UnixEpoch);
         Assert.Equal(1, removed.Removed);

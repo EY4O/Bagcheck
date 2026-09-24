@@ -25,9 +25,7 @@ only reads what you already have open in game, and asks [Universalis](https://un
 ## Prices
 
 - **Check prices** looks up everything still needed across your data centre and shows the cheapest way to buy
-  it, which worlds it's on, and the price on the world you're on.
-- **Target prices.** Give an item the most you'd like to pay and Bagcheck shows whether anything is listed at or
-  under it.
+  it, which worlds it's on, the price on the world you're on, and what it has recently sold for.
 - **NPC vendors.** If an NPC sells it for less, you're told who and where.
 - **The total.** About how much gil finishing the list would take, with the market's 5% tax estimated.
 

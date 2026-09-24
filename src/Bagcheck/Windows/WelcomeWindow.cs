@@ -143,7 +143,7 @@ public sealed class WelcomeWindow : ThemedWindow
         ImGui.TextWrapped("Check prices asks Universalis where the things you still need are cheapest across your data centre.");
         ImGuiHelpers.ScaledDummy(2);
         Bullet("Price is the average cost per unit, with the market's 5% tax, and Where says which world has them.");
-        Bullet("Give an item a target price and Bagcheck shows whether anything is listed at or under it.");
+        Bullet("Hover over a price to see every world it's on, the price here, and what it has recently sold for.");
         Bullet("If an NPC sells it for less, Where says NPC, and the tooltip says who and where.");
         ImGuiHelpers.ScaledDummy(2);
         ImGui.TextWrapped("At the top you'll see roughly what finishing the list would cost. The shopping is up to you.");
