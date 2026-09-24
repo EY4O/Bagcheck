@@ -50,6 +50,7 @@ public sealed class ShoppingListTab(Plugin plugin)
         if (plugin.CharacterId == 0) ImGui.TextColored(Theme.Warning, "Log in to count what you hold.");
         DrawAddRow(list);
         DrawSummary();
+        DrawPrices();
         ImGui.Separator();
 
         var item = list.Items.FirstOrDefault(i => i.Id == selectedItem);
@@ -153,6 +154,53 @@ public sealed class ShoppingListTab(Plugin plugin)
         ImGui.Checkbox("Hide done", ref hideDone);
     }
 
+    private void DrawPrices()
+    {
+        var checker = plugin.Prices;
+        var missing = needs.Values.Where(n => !n.Done).ToList();
+        using (ImRaii.Disabled(checker.Running || missing.Count == 0 || plugin.CharacterId == 0))
+        {
+            if (Theme.PrimaryButton("Check prices")) checker.Start(missing);
+        }
+        Ui.TipAlways(missing.Count == 0
+            ? "Nothing is still needed."
+            : $"Ask Universalis for prices across {Worlds.DataCentre} for the {missing.Count} items you still need.");
+
+        ImGui.SameLine();
+        if (checker.Running)
+        {
+            ImGui.TextDisabled($"Checking {checker.Done} of {checker.Total}...");
+        }
+        else if (checker.CheckedAt is { } at)
+        {
+            var total = Prices.Total(missing.Select(n => checker.For(n.Key)).OfType<PriceCheck>());
+            ImGui.TextUnformatted($"About {total.Cost:N0} gil to finish the list");
+            Ui.Tip($"The cheapest way to buy what's still needed, across {checker.DataCentre}, with an estimated " +
+                   $"{Prices.EstimatedTax:P0} market tax.\n{total.Priced} items priced" +
+                   (total.FromNpc > 0 ? $", {total.FromNpc} cheaper from an NPC" : "") + ".\n" +
+                   "Prices move, so treat this as a guide.");
+            ImGui.SameLine();
+            ImGui.TextDisabled($"({checker.DataCentre}, {Ui.Ago(at)})");
+            if (total.CantFinish > 0)
+            {
+                ImGui.SameLine();
+                ImGui.TextColored(Theme.Warning, $"{total.CantFinish} not fully listed");
+                Ui.Tip("There aren't enough listings on the data centre to cover these; the total counts what is listed.");
+            }
+        }
+        else
+        {
+            ImGui.TextDisabled("Prices not checked yet.");
+        }
+
+        if (checker.Failures.Count > 0)
+        {
+            ImGui.SameLine();
+            ImGui.TextColored(Theme.Bad, $"{checker.Failures.Count} couldn't be checked");
+            Ui.Tip(string.Join("\n", checker.Failures));
+        }
+    }
+
     private void DrawTable(ShoppingList list)
     {
         if (list.Items.Count == 0 && list.Groups.Count == 0)
@@ -162,7 +210,7 @@ public sealed class ShoppingListTab(Plugin plugin)
             return;
         }
 
-        using var table = ImRaii.Table("##shopping", 6,
+        using var table = ImRaii.Table("##shopping", 8,
             ImGuiTableFlags.RowBg | ImGuiTableFlags.BordersInnerH | ImGuiTableFlags.ScrollY | ImGuiTableFlags.SizingFixedFit);
         if (!table.Success) return;
         var scale = ImGuiHelpers.GlobalScale;
@@ -172,7 +220,9 @@ public sealed class ShoppingListTab(Plugin plugin)
         ImGui.TableSetupColumn("Need", ImGuiTableColumnFlags.WidthFixed, 60 * scale);
         ImGui.TableSetupColumn("Have", ImGuiTableColumnFlags.WidthFixed, 110 * scale);
         ImGui.TableSetupColumn("Still need", ImGuiTableColumnFlags.WidthFixed, 80 * scale);
-        ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, 80 * scale);
+        ImGui.TableSetupColumn("Target", ImGuiTableColumnFlags.WidthFixed, 70 * scale);
+        ImGui.TableSetupColumn("Price", ImGuiTableColumnFlags.WidthFixed, 80 * scale);
+        ImGui.TableSetupColumn("Where", ImGuiTableColumnFlags.WidthFixed, 120 * scale);
         ImGui.TableHeadersRow();
 
         var rows = list.Items.Where(Visible).OrderBy(i => i.Name, StringComparer.OrdinalIgnoreCase).ToList();
@@ -270,7 +320,84 @@ public sealed class ShoppingListTab(Plugin plugin)
             ImGui.TableNextColumn();
             if (item.TargetPrice > 0) ImGui.TextUnformatted(item.TargetPrice.ToString("N0"));
             else ImGui.TextDisabled("-");
+
+            DrawPrice(need is { Done: false } ? plugin.Prices.For(key) : null);
         }
+    }
+
+    /// <summary>The Price and Where cells of a row.</summary>
+    private void DrawPrice(PriceCheck? check)
+    {
+        ImGui.TableNextColumn();
+        if (check == null)
+        {
+            ImGui.TextDisabled("-");
+            ImGui.TableNextColumn();
+            return;
+        }
+
+        var details = Details(check);
+        if (check.NpcIsCheaper)
+        {
+            ImGui.TextUnformatted(check.Npc!.Price.ToString("N0"));
+            Ui.Tip(details);
+            ImGui.TableNextColumn();
+            Theme.Pill("NPC", Tone.Info);
+            Ui.Tip(details);
+            return;
+        }
+
+        if (check.Market.Units == 0)
+        {
+            ImGui.TextDisabled("-");
+            ImGui.TableNextColumn();
+            ImGui.TextColored(Theme.Warning, "none listed");
+            Ui.Tip(details);
+            return;
+        }
+
+        var unit = decimal.Round(check.Market.UnitCost);
+        var colour = check.Target == 0 ? (Vector4?)null
+            : check.CheapestListing <= check.Target ? Theme.Good
+            : Theme.Warning;
+        if (colour is { } c) ImGui.TextColored(c, unit.ToString("N0"));
+        else ImGui.TextUnformatted(unit.ToString("N0"));
+        Ui.Tip(details);
+
+        ImGui.TableNextColumn();
+        var worlds = check.Market.ByWorld();
+        var where = Worlds.Name(worlds[0].WorldId) + (worlds.Count > 1 ? $" +{worlds.Count - 1}" : "");
+        if (check.Market.Units < check.Wanted) ImGui.TextColored(Theme.Warning, where);
+        else ImGui.TextUnformatted(where);
+        Ui.Tip(details);
+    }
+
+    private static string Details(PriceCheck check)
+    {
+        var lines = new List<string> { $"Still needed when checked: {check.Wanted:N0}" };
+        if (check.Market.Units > 0)
+        {
+            lines.Add($"Cheapest on the data centre: {check.Market.Units:N0} for about {check.Market.Cost:N0} gil " +
+                      $"({check.Market.UnitCost:N0} each with tax)" +
+                      (check.Market.Units < check.Wanted ? ", all that's listed" : ""));
+            lines.AddRange(check.Market.ByWorld().Select(w => $"    {Worlds.Name(w.WorldId)}: {w.Units:N0}"));
+        }
+        else
+        {
+            lines.Add("Nothing listed on the data centre.");
+        }
+        lines.Add(check.Here is { } here
+            ? $"On {Worlds.CurrentName}: {here.Units:N0} for about {here.Cost:N0} gil"
+            : $"Nothing listed on {Worlds.CurrentName}.");
+        if (check.Median is { } median) lines.Add($"Recent sales: {median:N0} gil (median, before tax)");
+        if (check.Target > 0)
+            lines.Add(check.AtTarget > 0
+                ? $"Target {check.Target:N0}: {check.AtTarget:N0} listed at or under it, cheapest on {Worlds.Name(check.AtTargetWorld ?? 0)}"
+                : $"Target {check.Target:N0}: nothing listed at or under it");
+        if (check.Npc is { } npc)
+            lines.Add($"{npc.Npc} ({npc.Zone}) sells it for {npc.Price:N0} gil each" + (check.NpcIsCheaper ? ", the better buy" : ""));
+        if (check.UploadedAt is { } uploaded) lines.Add($"Universalis data from {Ui.Ago(uploaded)}.");
+        return string.Join("\n", lines);
     }
 
     private void DrawHave(ShoppingItem item, Holding holding, Need? need)

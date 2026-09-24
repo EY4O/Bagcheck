@@ -35,9 +35,12 @@ public sealed class Plugin : IDalamudPlugin
         Theme.Use(Configuration);
 
         Items = new ItemCatalog(DataManager);
+        Vendors = new VendorCatalog();
+        _ = Vendors.Index; // starts reading the vendor sheets in the background
         Market = new MarketService();
         Reader = new GameReader(this);
         ListingPrices = new ListingPrices(Market);
+        Prices = new PriceChecker(this);
 
         MainWindow = new MainWindow(this);
         ImportWindow = new ImportWindow(this);
@@ -56,6 +59,8 @@ public sealed class Plugin : IDalamudPlugin
     public MarketService Market { get; }
     public GameReader Reader { get; }
     public ListingPrices ListingPrices { get; }
+    public VendorCatalog Vendors { get; }
+    public PriceChecker Prices { get; }
     private MainWindow MainWindow { get; }
     private ImportWindow ImportWindow { get; }
     private readonly ItemContextMenu itemMenu;
@@ -102,6 +107,7 @@ public sealed class Plugin : IDalamudPlugin
         itemMenu.Dispose();
         windows.RemoveAllWindows();
 
+        Prices.Dispose();
         ListingPrices.Dispose();
         Market.Dispose();
         Reader.Save();
