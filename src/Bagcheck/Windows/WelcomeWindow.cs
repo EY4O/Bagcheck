@@ -181,7 +181,7 @@ public sealed class WelcomeWindow : ThemedWindow
 
     public static void Logo(float size)
     {
-        var path = Path.Combine(Plugin.PluginInterface.AssemblyLocation.DirectoryName ?? "", "images", "icon.png");
+        var path = Path.Combine(Plugin.PluginInterface.AssemblyLocation.DirectoryName ?? "", "images", "logo.png");
         if (Plugin.TextureProvider.GetFromFile(path).GetWrapOrDefault() is not { } icon) return;
         var scaled = new Vector2(size, size) * ImGuiHelpers.GlobalScale;
         ImGui.SetCursorPosX(Math.Max(0, (ImGui.GetContentRegionAvail().X - scaled.X) / 2) + ImGui.GetCursorPosX());
