@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Dalamud.NET.Sdk/15.0.0">
+  <PropertyGroup>
+    <Version>0.1.0.0</Version>
+    <Author>Looneth</Author>
+    <Name>Bagcheck</Name>
+    <Punchline>A crafter's shopping list and retainer tracker. It keeps count; you do the shopping.</Punchline>
+    <Description>Bagcheck keeps track of what you need and what you already have. Build a shopping list by hand, from the right-click menu or by pasting a Teamcraft list, and it counts what you hold in your bags, crystals, saddlebag and retainers. Check prices across your data centre, set a target price per item, and see what finishing the list would cost. The Retainers tab shows each retainer's gil and listings and how they compare. Bagcheck never clicks, buys or sells anything for you.</Description>
+    <Tags>shopping;crafting;teamcraft;retainer;marketboard;tracker</Tags>
+    <RepoUrl>https://github.com/EY4O/Bagcheck</RepoUrl>
+    <IconUrl>https://ey4o.github.io/XIV-Plugins/assets/bagcheck-icon.png</IconUrl>
+    <AcceptsFeedback>false</AcceptsFeedback>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <!-- Dalamud shows a dev plugin's icon from images/icon.png next to the DLL. -->
+    <None Include="..\..\images\icon.png" Link="images\icon.png" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Bagcheck.Core\Bagcheck.Core.csproj" />
+  </ItemGroup>
+</Project>

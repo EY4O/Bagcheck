@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Bagcheck.Core/Bagcheck.Core.csproj" />
+    <Project Path="src/Bagcheck/Bagcheck.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Bagcheck.Core.Tests/Bagcheck.Core.Tests.csproj" />
+  </Folder>
+</Solution>
