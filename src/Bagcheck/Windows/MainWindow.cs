@@ -1,6 +1,7 @@
 using System;
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface;
 using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
@@ -10,15 +11,24 @@ public sealed class MainWindow : ThemedWindow
 {
     private readonly RetainersTab retainers;
     private readonly ShoppingListTab shopping;
+    private readonly AboutTab about;
     private bool showList;
 
     public MainWindow(Plugin plugin) : base("Bagcheck###BagcheckMain")
     {
         retainers = new RetainersTab(plugin);
         shopping = new ShoppingListTab(plugin);
+        about = new AboutTab(plugin);
         Size = new Vector2(780, 580);
         SizeCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(660, 420), MaximumSize = new Vector2(1600, 1400) };
+        TitleBarButtons.Add(new TitleBarButton
+        {
+            Icon = FontAwesomeIcon.Cog,
+            IconOffset = new Vector2(2, 1),
+            Click = _ => plugin.ToggleSettings(),
+            ShowTooltip = () => ImGui.SetTooltip("Settings"),
+        });
     }
 
     /// <summary>Opens the window on the Shopping List with an entry selected.</summary>
@@ -43,6 +53,10 @@ public sealed class MainWindow : ThemedWindow
         using (var tab = ImRaii.TabItem("Retainers"))
         {
             if (tab.Success) retainers.Draw();
+        }
+        using (var tab = ImRaii.TabItem("About"))
+        {
+            if (tab.Success) about.Draw();
         }
     }
 }

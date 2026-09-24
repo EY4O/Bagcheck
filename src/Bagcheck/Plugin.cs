@@ -44,14 +44,24 @@ public sealed class Plugin : IDalamudPlugin
 
         MainWindow = new MainWindow(this);
         ImportWindow = new ImportWindow(this);
+        SettingsWindow = new SettingsWindow(this);
+        WelcomeWindow = new WelcomeWindow(this);
         windows.AddWindow(MainWindow);
         windows.AddWindow(ImportWindow);
+        windows.AddWindow(SettingsWindow);
+        windows.AddWindow(WelcomeWindow);
         itemMenu = new ItemContextMenu(ContextMenu, this);
 
-        CommandManager.AddHandler(Command, new CommandInfo(OnCommand) { HelpMessage = "Open Bagcheck." });
+        CommandManager.AddHandler(Command, new CommandInfo(OnCommand)
+        {
+            HelpMessage = "Open Bagcheck. Also: /bagcheck settings, /bagcheck welcome.",
+        });
         PluginInterface.UiBuilder.Draw += windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi += ToggleMainWindow;
+        PluginInterface.UiBuilder.OpenConfigUi += ToggleSettings;
         Framework.Update += OnUpdate;
+
+        if (!Configuration.WelcomeSeen) WelcomeWindow.Open();
     }
 
     public Configuration Configuration { get; }
@@ -63,6 +73,8 @@ public sealed class Plugin : IDalamudPlugin
     public PriceChecker Prices { get; }
     private MainWindow MainWindow { get; }
     private ImportWindow ImportWindow { get; }
+    private SettingsWindow SettingsWindow { get; }
+    private WelcomeWindow WelcomeWindow { get; }
     private readonly ItemContextMenu itemMenu;
 
     /// <summary>The logged-in character's content id, or 0.</summary>
@@ -84,6 +96,9 @@ public sealed class Plugin : IDalamudPlugin
     public void MarkDirty() => dirtySince = DateTime.UtcNow;
 
     public void ToggleMainWindow() => MainWindow.Toggle();
+    public void ShowMainWindow() => MainWindow.IsOpen = true;
+    public void ToggleSettings() => SettingsWindow.Toggle();
+    public void OpenWelcome() => WelcomeWindow.Open();
 
     private void OnUpdate(IFramework framework)
     {
@@ -96,13 +111,32 @@ public sealed class Plugin : IDalamudPlugin
         }
     }
 
-    private void OnCommand(string command, string args) => ToggleMainWindow();
+    private void OnCommand(string command, string args)
+    {
+        switch (args.Trim().ToLowerInvariant())
+        {
+            case "":
+                ToggleMainWindow();
+                break;
+            case "settings":
+            case "config":
+                ToggleSettings();
+                break;
+            case "welcome":
+                OpenWelcome();
+                break;
+            default:
+                ChatGui.Print("/bagcheck opens the window. /bagcheck settings opens the settings, /bagcheck welcome the guide.", "Bagcheck");
+                break;
+        }
+    }
 
     public void Dispose()
     {
         Framework.Update -= OnUpdate;
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainWindow;
+        PluginInterface.UiBuilder.OpenConfigUi -= ToggleSettings;
         CommandManager.RemoveHandler(Command);
         itemMenu.Dispose();
         windows.RemoveAllWindows();

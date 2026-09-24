@@ -21,6 +21,9 @@ public sealed class Configuration : IPluginConfiguration
 
     public bool ShowContextMenu { get; set; } = true;
 
+    /// <summary>The welcome guide has been shown once, so it no longer opens by itself.</summary>
+    public bool WelcomeSeen { get; set; }
+
     public bool UseTheme { get; set; } = true;
     public AccentChoice Accent { get; set; } = AccentChoice.GilGold;
 
