@@ -19,10 +19,7 @@ public sealed class AboutTab(Plugin plugin)
             Ui.Centered("A shopping list and retainer tracker for crafters.");
         ImGuiHelpers.ScaledDummy(10);
         WelcomeWindow.Logo(112);
-        ImGuiHelpers.ScaledDummy(10);
-        Ui.Centered("Bagcheck never clicks, buys or sells anything for you.");
-        Ui.Centered("It reads what you have open and asks Universalis for prices.");
-        ImGuiHelpers.ScaledDummy(10);
+        ImGuiHelpers.ScaledDummy(14);
 
         (string Label, Action Click, string Tip)[] buttons =
         [

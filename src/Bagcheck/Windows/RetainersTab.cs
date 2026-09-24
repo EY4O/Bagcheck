@@ -41,8 +41,7 @@ public sealed class RetainersTab(Plugin plugin)
                               $"{totals.Active} of {totals.Total} retainers active");
         ImGui.SameLine();
         ImGui.TextDisabled("(?)");
-        Ui.Tip("Updated whenever you open a summoning bell, and each retainer's listings when you open its market.\n" +
-               "Bagcheck only reads what you have open; it never opens anything itself.");
+        Ui.Tip("Updated whenever you open a summoning bell, and each retainer's listings when you open its market.");
 
         DrawToolbar(records);
         ImGui.Separator();

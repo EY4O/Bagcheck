@@ -96,10 +96,6 @@ public sealed class WelcomeWindow : ThemedWindow
         Bullet("Keeps a shopping list, by hand, from the right-click menu, or pasted from Teamcraft.");
         Bullet("Counts what you hold in your bags, crystals, saddlebag and retainers.");
         Bullet("Checks prices across your data centre, and remembers your retainers' gil and listings.");
-        ImGuiHelpers.ScaledDummy(6);
-        using (ImRaii.PushColor(ImGuiCol.Text, Theme.Good))
-            ImGui.TextWrapped("Bagcheck never clicks, buys or sells anything for you. It only reads what you already have open, " +
-                              "and asks Universalis for prices.");
         ImGuiHelpers.ScaledDummy(10);
 
         const string tour = "Show me around", later = "Not now";

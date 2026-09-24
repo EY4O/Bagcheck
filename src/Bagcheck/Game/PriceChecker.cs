@@ -8,10 +8,7 @@ using Bagcheck.Core.Shopping;
 
 namespace Bagcheck.Game;
 
-/// <summary>
-/// Checks data-centre prices for everything the shopping list still needs, when asked. Only reads prices from
-/// Universalis; nothing in game is touched.
-/// </summary>
+/// <summary>Checks data-centre prices on Universalis for everything the shopping list still needs, when asked.</summary>
 public sealed class PriceChecker(Plugin plugin) : IDisposable
 {
     private sealed record Job(ItemKey Key, string Name, long Wanted, NpcOffer? Npc);
