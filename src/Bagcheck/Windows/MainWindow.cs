@@ -1,23 +1,29 @@
 using System.Numerics;
 using Dalamud.Bindings.ImGui;
+using Dalamud.Interface.Utility.Raii;
 using Dalamud.Interface.Windowing;
 
 namespace Bagcheck.Windows;
 
-public sealed class MainWindow : Window
+public sealed class MainWindow : ThemedWindow
 {
-    private readonly Plugin plugin;
+    private readonly RetainersTab retainers;
 
     public MainWindow(Plugin plugin) : base("Bagcheck###BagcheckMain")
     {
-        this.plugin = plugin;
-        Size = new Vector2(760, 560);
+        retainers = new RetainersTab(plugin);
+        Size = new Vector2(780, 580);
         SizeCondition = ImGuiCond.FirstUseEver;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(640, 420), MaximumSize = new Vector2(1600, 1400) };
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(660, 420), MaximumSize = new Vector2(1600, 1400) };
     }
 
     public override void Draw()
     {
-        ImGui.TextUnformatted($"Bagcheck {Plugin.PluginInterface.Manifest.AssemblyVersion}");
+        using var tabs = ImRaii.TabBar("##tabs");
+        if (!tabs.Success) return;
+        using (var tab = ImRaii.TabItem("Retainers"))
+        {
+            if (tab.Success) retainers.Draw();
+        }
     }
 }

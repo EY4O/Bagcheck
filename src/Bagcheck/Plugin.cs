@@ -4,6 +4,7 @@ using Dalamud.Interface.Windowing;
 using Dalamud.IoC;
 using Dalamud.Plugin;
 using Dalamud.Plugin.Services;
+using Bagcheck.Game;
 using Bagcheck.Windows;
 
 namespace Bagcheck;
@@ -15,6 +16,10 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IChatGui ChatGui { get; private set; } = null!;
     [PluginService] internal static IPluginLog Log { get; private set; } = null!;
     [PluginService] internal static IFramework Framework { get; private set; } = null!;
+    [PluginService] internal static IDataManager DataManager { get; private set; } = null!;
+    [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
+    [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
+    [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
 
     private const string Command = "/bagcheck";
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(1);
@@ -25,6 +30,12 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        Theme.Use(Configuration);
+
+        Items = new ItemCatalog(DataManager);
+        Market = new MarketService();
+        Reader = new GameReader(this);
+        ListingPrices = new ListingPrices(Market);
 
         MainWindow = new MainWindow(this);
         windows.AddWindow(MainWindow);
@@ -36,7 +47,14 @@ public sealed class Plugin : IDalamudPlugin
     }
 
     public Configuration Configuration { get; }
+    public ItemCatalog Items { get; }
+    public MarketService Market { get; }
+    public GameReader Reader { get; }
+    public ListingPrices ListingPrices { get; }
     private MainWindow MainWindow { get; }
+
+    /// <summary>The logged-in character's content id, or 0.</summary>
+    public ulong CharacterId => PlayerState.IsLoaded ? PlayerState.ContentId : 0;
 
     /// <summary>Saves shortly after the last change, so typing into a field doesn't write the file every frame.</summary>
     public void MarkDirty() => dirtySince = DateTime.UtcNow;
@@ -45,6 +63,8 @@ public sealed class Plugin : IDalamudPlugin
 
     private void OnUpdate(IFramework framework)
     {
+        Reader.Update();
+        ListingPrices.Update();
         if (dirtySince is { } since && DateTime.UtcNow - since >= SaveDelay)
         {
             dirtySince = null;
@@ -61,6 +81,10 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainWindow;
         CommandManager.RemoveHandler(Command);
         windows.RemoveAllWindows();
+
+        ListingPrices.Dispose();
+        Market.Dispose();
+        Reader.Save();
         if (dirtySince != null) Configuration.Save();
     }
 }
