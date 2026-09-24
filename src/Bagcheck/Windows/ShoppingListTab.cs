@@ -32,6 +32,8 @@ public sealed class ShoppingListTab(Plugin plugin)
 
     private ShoppingList List => plugin.Configuration.List;
 
+    private Holding Held(ItemKey key) => holdings.TryGetValue(key, out var holding) ? holding : plugin.Reader.Held(key);
+
     /// <summary>Selects an entry, for example one just added from the right-click menu.</summary>
     public void Select(Guid id)
     {
@@ -44,11 +46,13 @@ public sealed class ShoppingListTab(Plugin plugin)
     {
         var list = List;
         if (addTo is { } target && list.Groups.All(g => g.Id != target)) addTo = null;
-        holdings = list.Items.Select(i => i.GetKey()).Distinct().ToDictionary(k => k, plugin.Reader.Held);
-        needs = ShoppingNeeds.Of(list, key => holdings[key].Total);
 
         if (plugin.CharacterId == 0) ImGui.TextColored(Theme.Warning, "Log in to count what you hold.");
         DrawAddRow(list);
+
+        // After the add row, which may have just added an item.
+        holdings = list.Items.Select(i => i.GetKey()).Distinct().ToDictionary(k => k, plugin.Reader.Held);
+        needs = ShoppingNeeds.Of(list, key => Held(key).Total);
         DrawSummary();
         DrawPrices();
         ImGui.Separator();
@@ -308,7 +312,7 @@ public sealed class ShoppingListTab(Plugin plugin)
             ImGui.TextUnformatted(item.Needed.ToString("N0"));
 
             ImGui.TableNextColumn();
-            DrawHave(item, holdings[key], need);
+            DrawHave(item, Held(key), need);
 
             ImGui.TableNextColumn();
             if (need == null) ImGui.TextDisabled("paused");
