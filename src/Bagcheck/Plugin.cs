@@ -20,6 +20,7 @@ public sealed class Plugin : IDalamudPlugin
     [PluginService] internal static IPlayerState PlayerState { get; private set; } = null!;
     [PluginService] internal static IGameInventory GameInventory { get; private set; } = null!;
     [PluginService] internal static ITextureProvider TextureProvider { get; private set; } = null!;
+    [PluginService] internal static IContextMenu ContextMenu { get; private set; } = null!;
 
     private const string Command = "/bagcheck";
     private static readonly TimeSpan SaveDelay = TimeSpan.FromSeconds(1);
@@ -30,6 +31,7 @@ public sealed class Plugin : IDalamudPlugin
     public Plugin()
     {
         Configuration = PluginInterface.GetPluginConfig() as Configuration ?? new Configuration();
+        Configuration.List.Tidy();
         Theme.Use(Configuration);
 
         Items = new ItemCatalog(DataManager);
@@ -38,7 +40,10 @@ public sealed class Plugin : IDalamudPlugin
         ListingPrices = new ListingPrices(Market);
 
         MainWindow = new MainWindow(this);
+        ImportWindow = new ImportWindow(this);
         windows.AddWindow(MainWindow);
+        windows.AddWindow(ImportWindow);
+        itemMenu = new ItemContextMenu(ContextMenu, this);
 
         CommandManager.AddHandler(Command, new CommandInfo(OnCommand) { HelpMessage = "Open Bagcheck." });
         PluginInterface.UiBuilder.Draw += windows.Draw;
@@ -52,9 +57,23 @@ public sealed class Plugin : IDalamudPlugin
     public GameReader Reader { get; }
     public ListingPrices ListingPrices { get; }
     private MainWindow MainWindow { get; }
+    private ImportWindow ImportWindow { get; }
+    private readonly ItemContextMenu itemMenu;
 
     /// <summary>The logged-in character's content id, or 0.</summary>
     public ulong CharacterId => PlayerState.IsLoaded ? PlayerState.ContentId : 0;
+
+    /// <summary>Adds an item to the shopping list (outside any group) and shows it.</summary>
+    public void AddToList(uint itemId, bool hq)
+    {
+        if (Items.Get(itemId) is not { IsMarketable: true } info) return;
+        var entry = Configuration.List.Add(info.Id, info.Name, hq && info.CanBeHq, 1, null, out var added);
+        MarkDirty();
+        ChatGui.Print(added ? $"Added {info.Name} to your shopping list." : $"{info.Name} is already on your shopping list.", "Bagcheck");
+        MainWindow.ShowListEntry(entry.Id);
+    }
+
+    public void OpenImport(Guid? groupId) => ImportWindow.Open(groupId);
 
     /// <summary>Saves shortly after the last change, so typing into a field doesn't write the file every frame.</summary>
     public void MarkDirty() => dirtySince = DateTime.UtcNow;
@@ -80,6 +99,7 @@ public sealed class Plugin : IDalamudPlugin
         PluginInterface.UiBuilder.Draw -= windows.Draw;
         PluginInterface.UiBuilder.OpenMainUi -= ToggleMainWindow;
         CommandManager.RemoveHandler(Command);
+        itemMenu.Dispose();
         windows.RemoveAllWindows();
 
         ListingPrices.Dispose();
